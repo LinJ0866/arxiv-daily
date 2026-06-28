@@ -1,146 +1,271 @@
-# 🚀 daily-arXiv-ai-enhanced
+# 🚀 Daily arXiv AI Enhanced
 
-> [!CAUTION]
-> 若您所在法域对学术数据有审查要求，谨慎运行本代码；任何二次分发版本必须履行合规审查（包括但不限于原始论文合规性、AI合规性）义务，否则一切法律后果由下游自行承担。
+> [English](README_en.md) | 中文
 
-> [!CAUTION]
-> If your jurisdiction has censorship requirements for academic data, run this code with caution; any secondary distribution version must remove the entrance accessible to China and fulfill the content review obligations, otherwise all legal consequences will be borne by the downstream.
+每日自动爬取 arXiv 论文，AI 摘要增强，个性化推荐系统
 
+## ✨ 功能特性
 
-This innovative tool transforms how you stay updated with arXiv papers by combining automated crawling with AI-powered summarization.
+### 核心功能
+- 📥 **自动爬取**：定时爬取 arXiv 最新论文
+- 🤖 **AI 摘要**：自动生成 TL;DR、动机、方法、结果、结论（可选）
+- ⭐ **个性化推荐**：基于喜欢列表 + 关键词 + 作者的智能推荐
+- ❤️ **喜欢收藏**：收藏喜欢的论文，支持 Zotero 导入
+- 👥 **多用户**：支持多用户，独立偏好和喜欢列表
 
+### 推荐算法
+- **向量相似度**：基于 Embedding 的语义匹配（权重可配置）
+- **关键词匹配**：匹配用户设置的偏好关键词
+- **作者匹配**：匹配用户关注的作者
+- **时间衰减**：最近喜欢的论文权重更高
 
-## ✨ Key Features
+## 📦 技术栈
 
-🎯 **Zero Infrastructure Required**
-- Leverages GitHub Actions and Pages - no server needed
-- Completely free to deploy and use
+| 组件 | 技术 |
+|------|------|
+| 后端 | FastAPI + SQLAlchemy + PostgreSQL |
+| 前端 | Vue 3 + Vite + Pinia |
+| Embedding | OpenAI 兼容 API（如阿里云 DashScope） |
+| LLM | OpenAI 兼容 API（可选） |
+| 部署 | Docker Compose |
 
-🤖 **Smart AI Summarization**
-- Daily paper crawling with DeepSeek-powered summaries
-- Cost-effective: Only ~0.2 CNY per day
+## 🚀 快速开始
 
-💫 **Smart Reading Experience**
-- Personalized paper highlighting based on your interests
-- Cross-device compatibility (desktop & mobile)
-- Local preference storage for privacy
-- Flexible date range filtering
+### 1. 环境准备
 
-🧩 **SKILL System**
-- Plug-and-play skill modules for customizing paper filtering
+```bash
+git clone https://github.com/your-username/daily-arXiv-ai-enhanced.git
+cd daily-arXiv-ai-enhanced
+```
 
-⚙️ **Easy Preference Export & Integration**
-- One-click copy in Settings to export your keywords and authors configuration
-- Seamlessly combine exported preferences with SKILL for reproducible and shareable setups
+### 2. 配置环境变量
 
-👉 **[Try it now!](https://dw-dengwei.github.io/daily-arXiv-ai-enhanced/)** - No installation required
+```bash
+cp .env.example .env
+```
 
+编辑 `.env` 文件：
 
+```bash
+# 数据库
+DATABASE_URL=postgresql://arxiv:password@db:5432/arxiv_daily
 
-https://github.com/user-attachments/assets/b25712a4-fb8d-484f-863d-e8da6922f9d7
+# 应用
+SECRET_KEY=your-secret-key-change-this
 
+# Embedding（必填）
+EMBEDDING_API_KEY=your-api-key
+EMBEDDING_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+EMBEDDING_MODEL=text-embedding-v4
 
+# LLM（可选）
+LLM_API_KEY=
+LLM_API_BASE=https://api.openai.com/v1
+LLM_MODEL=deepseek-chat
 
+# 爬虫配置
+ARXIV_CATEGORIES=cs.CV,cs.CL,cs.AI
+```
 
-# How to use
-This repo will daily crawl arXiv papers about **cs.CV, cs.GR, cs.CL and cs.AI**, and use **DeepSeek** to summarize the papers in **Chinese**.
-If you wish to crawl other arXiv categories, use other LLMs, or other languages, please follow the instructions.
-Otherwise, you can watch the video above first and directly use this repo in https://dw-dengwei.github.io/daily-arXiv-ai-enhanced/. Please star it if you like :)
+### 3. 启动服务
 
-<details>
-   <summary> If you want to customize categories, LLMs, or languages, click here.  </summary>
+```bash
+docker-compose up -d
+docker-compose exec api python scripts/init_db.py --with-test-data
+```
 
-## Instructions
-1. Fork this repo to your own account and delete my own information in [buy-me-a-coffee](./buy-me-a-coffee/README.md).
-2. Go to: your-own-repo -> Settings -> Secrets and variables -> Actions
-3. Go to Secrets. Secrets are encrypted and used for sensitive data
-4. Create two repository secrets named `OPENAI_API_KEY` and `OPENAI_BASE_URL`, and input corresponding values.
-5. [Optional] Set a password in `secrets.ACCESS_PASSWORD` if you do not wish others to access your page. (see https://github.com/dw-dengwei/daily-arXiv-ai-enhanced/pull/64)
-6. Go to Variables. Variables are shown as plain text and are used for non-sensitive data
-7. Create the following repository variables:
-   1. `CATEGORIES`: separate the categories with ",", such as "cs.CL, cs.CV"
-   2. `LANGUAGE`: such as "Chinese" or "English"
-   3. `MODEL_NAME`: such as "deepseek-chat"
-   4. `EMAIL`: your email for push to GitHub
-   5. `NAME`: your name for push to GitHub
-8. Go to your-own-repo -> Actions -> arXiv-daily-ai-enhanced
-9. You can manually click **Run workflow** to test if it works well (it may take about one hour). By default, this action will automatically run every day. You can modify it in `.github/workflows/run.yml`
-10. Set up GitHub pages: Go to your own repo -> Settings -> Pages. In `Build and deployment`, set `Source="Deploy from a branch"`, `Branch="main", "/(root)"`. Wait for a few minutes, go to https://\<username\>.github.io/daily-arXiv-ai-enhanced/. Please see this [issue](https://github.com/dw-dengwei/daily-arXiv-ai-enhanced/issues/14) for more precise instructions.
-</details>
+### 4. 访问应用
 
-# Contributors
-Thanks to the following special contributors for contributing code, discovering bugs, and sharing useful ideas for this project!!!
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top">
-        <a href="https://github.com/JianGuanTHU"><img src="https://avatars.githubusercontent.com/u/44895708?v=4" width="100px;" alt="JianGuanTHU"/><br /><sub><b>JianGuanTHU</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/Chi-hong22"><img src="https://avatars.githubusercontent.com/u/75403952?v=4" width="100px;" alt="Chi-hong22"/><br /><sub><b>Chi-hong22</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/chaozg"><img src="https://avatars.githubusercontent.com/u/69794131?v=4" width="100px;" alt="chaozg"/><br /><sub><b>chaozg</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/quantum-ctrl"><img src="https://avatars.githubusercontent.com/u/16505311?v=4" width="100px;" alt="quantum-ctrl"/><br /><sub><b>quantum-ctrl</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/Zhao2z"><img src="https://avatars.githubusercontent.com/u/141019403?v=4" width="100px;" alt="Zhao2z"/><br /><sub><b>Zhao2z</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/eclipse0922"><img src="https://avatars.githubusercontent.com/u/6214316?v=4" width="100px;" alt="eclipse0922"/><br /><sub><b>eclipse0922</b></sub></a><br />
-      </td>
-    </tr>
+- **前端**：http://localhost
+- **API 文档**：http://localhost:8000/docs
 
+### 5. 默认账号
 
-  </tbody>
-  <tbody>
-   <tr>
-      <td align="center" valign="top">
-        <a href="https://github.com/xuemian168"><img src="https://avatars.githubusercontent.com/u/38741078?v=4" width="100px;" alt="xuemian168"/><br /><sub><b>xuemian168</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/Lrrrr549"><img src="https://avatars.githubusercontent.com/u/71866027?v=4" width="100px;" alt="Lrrrr549"/><br /><sub><b>Lrrrr549</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/AinzRimuru"><img src="https://avatars.githubusercontent.com/u/59441476?v=4" width="100px;" alt="AinzRimuru"/><br /><sub><b>AinzRimuru</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/fengxueguiren"><img src="https://avatars.githubusercontent.com/u/153522370?v=4" width="100px;" alt="fengxueguiren"/><br /><sub><b>fengxueguiren</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://github.com/zerocpp"><img src="https://avatars.githubusercontent.com/u/2630297?v=4" width="100px;" alt="fengxueguiren"/><br /><sub><b>zerocpp</b></sub></a><br />
-      </td>
-   </tr>
-  </tbody>
-</table>
+| 用户名 | 密码 | 角色 |
+|--------|------|------|
+| admin | admin123 | 管理员 |
+| test | test123 | 普通用户 |
 
-# Acknowledgement
-We sincerely thank the following individuals and organizations for their promotion and support!!!
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top">
-        <a href="https://x.com/GitHub_Daily/status/1930610556731318781"><img src="https://pbs.twimg.com/profile_images/1660876795347111937/EIo6fIr4_400x400.jpg" width="100px;" alt="Github_Daily"/><br /><sub><b>Github_Daily</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://x.com/aigclink/status/1930897858963853746"><img src="https://pbs.twimg.com/profile_images/1729450995850027008/gllXr6bh_400x400.jpg" width="100px;" alt="AIGCLINK"/><br /><sub><b>AIGCLINK</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://www.ruanyifeng.com/blog/2025/06/weekly-issue-353.html"><img src="https://avatars.githubusercontent.com/u/905434" width="100px;" alt="阮一峰的网络日志"/><br /><sub><b>阮一峰的网络日志 <br> 科技爱好者周刊 <br> （第 353 期）</b></sub></a><br />
-      </td>
-      <td align="center" valign="top">
-        <a href="https://hellogithub.com/periodical/volume/111"><img src="https://github.com/user-attachments/assets/eff6b6dd-0323-40c4-9db6-444a51bbc80a" width="100px;" alt="《HelloGitHub》第 111 期"/><br /><sub><b>《HelloGitHub》<br> 月刊第 111 期</b></sub></a><br />
-      </td>
-    </tr>
-  </tbody>
-</table>
+## 📖 使用教程
 
+### 用户功能
 
-# Star history
+#### 注册/登录
+1. 访问首页，点击右上角"注册"
+2. 填写用户名和密码完成注册
+3. 使用注册的账号登录
 
-[![Stargazers over time](https://starchart.cc/dw-dengwei/daily-arXiv-ai-enhanced.svg?variant=adaptive)](https://starchart.cc/dw-dengwei/daily-arXiv-ai-enhanced)
+#### 浏览论文
+- 首页显示最新论文列表
+- 支持按分类筛选（cs.CV、cs.AI 等）
+- 支持按日期筛选
+- 支持搜索（标题、摘要、作者）
 
-# Buy me a coffee
-[here](./buy-me-a-coffee/README.md)
+#### 喜欢论文
+- 点击论文卡片上的 ❤️ 按钮收藏
+- 在"我的喜欢"页面查看所有收藏
+
+#### 导入 Zotero 文献
+1. 从 Zotero 导出 RDF 文件
+2. 进入"我的喜欢"页面
+3. 点击"导入 Zotero"按钮
+4. 选择导出的 RDF 文件
+
+#### 设置偏好
+1. 进入"设置"页面
+2. 添加偏好关键词（如 transformer、diffusion）
+3. 添加关注的作者
+4. 调整推荐权重
+
+#### 个性化推荐
+- 登录后首页显示"猜你喜欢"板块
+- 推荐基于喜欢列表 + 关键词 + 作者
+- 可在设置页点击"刷新推荐"
+
+### 管理员功能
+
+#### 系统管理
+- 进入"系统"页面查看定时任务状态
+- 查看运行历史记录
+- 手动触发爬取
+- 重建 Embedding
+
+#### 设置管理员
+```bash
+docker-compose exec api python scripts/init_db.py --set-admin username
+```
+
+## ⚙️ 配置说明
+
+### 环境变量
+
+| 变量 | 必填 | 说明 | 默认值 |
+|------|------|------|--------|
+| `DATABASE_URL` | ✅ | PostgreSQL 连接字符串 | - |
+| `SECRET_KEY` | ✅ | JWT 密钥 | - |
+| `EMBEDDING_API_KEY` | ✅ | Embedding API 密钥 | - |
+| `EMBEDDING_API_BASE` | ✅ | Embedding API 地址 | `https://api.openai.com/v1` |
+| `EMBEDDING_MODEL` | ✅ | Embedding 模型名称 | `text-embedding-v3-small` |
+| `LLM_API_KEY` | ❌ | LLM API 密钥 | - |
+| `LLM_MODEL` | ❌ | LLM 模型名称 | `deepseek-chat` |
+| `ARXIV_CATEGORIES` | ❌ | 爬取分类 | `cs.CV,cs.CL,cs.AI` |
+
+### 推荐权重
+
+每个用户可独立配置：
+
+| 权重 | 说明 | 默认值 |
+|------|------|--------|
+| `weight_vector` | 向量相似度权重 | 0.7 |
+| `weight_keyword` | 关键词匹配权重 | 0.3 |
+| `author_bonus` | 作者匹配加分 | 0.5 |
+
+## 🚢 CI/CD 配置
+
+项目使用 GitHub Actions 自动构建和部署。
+
+### 后端（Docker 镜像）
+
+自动构建 Docker 镜像并推送到阿里云 ACR。
+
+**配置 Secrets：**
+
+| Secret | 说明 |
+|--------|------|
+| `ACR_USERNAME` | 阿里云 ACR 用户名 |
+| `ACR_PASSWORD` | 阿里云 ACR 密码 |
+
+**镜像地址：**
+```
+registry.cn-hangzhou.aliyuncs.com/arxiv-daily/arxiv-daily:latest
+```
+
+### 前端（GitHub Pages / 七牛云）
+
+默认部署到 GitHub Pages，可选部署到七牛云。
+
+**配置 Secrets：**
+
+| Secret | 必填 | 说明 |
+|--------|------|------|
+| `API_BASE_URL` | ❌ | 后端 API 地址（留空使用相对路径） |
+| `QINIU_ENABLED` | ❌ | 设为 `true` 启用七牛云部署 |
+| `QINIU_ACCESS_KEY` | ❌ | 七牛云 Access Key |
+| `QINIU_SECRET_KEY` | ❌ | 七牛云 Secret Key |
+| `QINIU_BUCKET` | ❌ | 七牛云 Bucket |
+| `QINIU_DOMAIN` | ❌ | 七牛云 CDN 域名 |
+
+#### 启用七牛云部署
+
+1. 在 GitHub 仓库 Settings > Secrets and variables > Actions
+2. 添加以下 Secrets：
+   - `QINIU_ENABLED`: `true`
+   - `QINIU_ACCESS_KEY`: 你的七牛云 Access Key
+   - `QINIU_SECRET_KEY`: 你的七牛云 Secret Key
+   - `QINIU_BUCKET`: 你的 Bucket 名称
+   - `QINIU_DOMAIN`: 你的 CDN 域名（如 `https://cdn.example.com`）
+3. 推送代码后，前端会同时部署到 GitHub Pages 和七牛云
+
+#### 配置自定义域名（GitHub Pages）
+
+1. 在 GitHub 仓库 Settings > Pages
+2. 在 Custom domain 输入你的域名
+3. 配置 DNS CNAME 记录指向 `your-username.github.io`
+
+## 🔧 开发
+
+### 本地开发
+
+```bash
+# 启动数据库
+docker-compose up -d db
+
+# 安装后端依赖
+pip install -r requirements.txt
+
+# 初始化数据库
+python scripts/init_db.py --with-test-data
+
+# 启动后端
+uvicorn app.main:app --reload --port 8000
+
+# 启动前端
+cd frontend
+npm install
+npm run dev
+```
+
+### 项目结构
+
+```
+.
+├── app/                    # FastAPI 后端
+│   ├── api/                # API 路由
+│   ├── models/             # 数据库模型
+│   ├── schemas/            # Pydantic Schemas
+│   ├── services/           # 业务逻辑
+│   └── main.py             # 入口
+├── frontend/               # Vue 3 前端
+│   ├── src/
+│   │   ├── api/            # API 封装
+│   │   ├── components/     # 组件
+│   │   ├── views/          # 页面
+│   │   ├── stores/         # 状态管理
+│   │   └── router/         # 路由
+│   └── package.json
+├── scripts/                # 脚本工具
+├── migrations/             # 数据库迁移
+├── docker-compose.yml      # Docker 配置
+└── requirements.txt        # Python 依赖
+```
+
+## 📄 许可证
+
+Apache-2.0
+
+## 🙏 致谢
+
+- [arXiv](https://arxiv.org/) - 论文数据源
+- [FastAPI](https://fastapi.tiangolo.com/) - Web 框架
+- [Vue.js](https://vuejs.org/) - 前端框架
+- [pgvector](https://github.com/pgvector/pgvector) - PostgreSQL 向量扩展

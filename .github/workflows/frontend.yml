@@ -1,0 +1,141 @@
+name: Frontend - Build and Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'frontend/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Job 1: 构建前端
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  # Job 2a: 部署到 GitHub Pages（默认）
+  deploy-github-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Job 2b: 部署到七牛云（可选，需要配置 QINIU_ENABLED=true）
+  deploy-qiniu:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && secrets.QINIU_ENABLED == 'true'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+
+      - name: Install qshell
+        run: |
+          wget -O qshell.tar.gz https://devtools.qiniu.com/qshell-linux-amd64-v2.14.0.tar.gz
+          tar -xzf qshell.tar.gz
+          sudo mv qshell-linux-amd64-v2.14.0 /usr/local/bin/qshell
+          qshell version
+
+      - name: Configure qshell
+        run: |
+          qshell account ${{ secrets.QINIU_ACCESS_KEY }} ${{ secrets.QINIU_SECRET_KEY }} qiniu-deploy
+
+      - name: Upload to Qiniu
+        run: |
+          # 上传静态资源（带 hash 的文件，长期缓存）
+          qshell qupload2 \
+            --src-dir=./dist \
+            --bucket=${{ secrets.QINIU_BUCKET }} \
+            --key-prefix=/ \
+            --overwrite=true \
+            --check-hash=true \
+            --thread-count=4 \
+            --skip-path-prefixes="index.html" \
+            --include-file-extensions="js,css,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot"
+
+          # 上传 index.html（不缓存，确保更新及时）
+          qshell rput ${{ secrets.QINIU_BUCKET }} \
+            index.html \
+            ./dist/index.html \
+            --overwrite
+
+      - name: Refresh CDN cache
+        run: |
+          qshell cdnrefresh \
+            --dirs=${{ secrets.QINIU_DOMAIN }}/
+
+      - name: Deploy summary
+        run: |
+          echo "## 🚀 Qiniu Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bucket**: ${{ secrets.QINIU_BUCKET }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Domain**: ${{ secrets.QINIU_DOMAIN }}" >> $GITHUB_STEP_SUMMARY
