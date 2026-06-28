@@ -9,6 +9,7 @@ on:
       - 'scripts/**'
       - 'requirements.txt'
       - 'Dockerfile'
+      - '.github/workflows/backend.yml'
   pull_request:
     branches: [main]
     paths:
@@ -16,10 +17,11 @@ on:
       - 'scripts/**'
       - 'requirements.txt'
       - 'Dockerfile'
+      - '.github/workflows/backend.yml'
 
 env:
   REGISTRY: registry.cn-hangzhou.aliyuncs.com
-  NAMESPACE: arxiv-daily
+  NAMESPACE: linj0866
   IMAGE_NAME: arxiv-daily
 
 jobs:

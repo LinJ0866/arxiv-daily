@@ -6,10 +6,12 @@ on:
     tags: ['v*']
     paths:
       - 'frontend/**'
+      - '.github/workflows/frontend.yml'
   pull_request:
     branches: [main]
     paths:
       - 'frontend/**'
+      - '.github/workflows/frontend.yml'
 
 env:
   NODE_VERSION: '20'
@@ -29,7 +31,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -83,59 +85,67 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-  # Job 2b: 部署到七牛云（可选，需要配置 QINIU_ENABLED=true）
-  deploy-qiniu:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' && secrets.QINIU_ENABLED == 'true'
-    permissions:
-      contents: read
+  # # Job 2b: 七牛云部署（可选）
+  # deploy-qiniu:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     QINIU_ENABLED: ${{ secrets.QINIU_ENABLED }}
 
-    steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: dist
+  #   permissions:
+  #     contents: read
 
-      - name: Install qshell
-        run: |
-          wget -O qshell.tar.gz https://devtools.qiniu.com/qshell-linux-amd64-v2.14.0.tar.gz
-          tar -xzf qshell.tar.gz
-          sudo mv qshell-linux-amd64-v2.14.0 /usr/local/bin/qshell
-          qshell version
+  #   steps:
+  #     - name: Download build artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: frontend-dist
+  #         path: dist
 
-      - name: Configure qshell
-        run: |
-          qshell account ${{ secrets.QINIU_ACCESS_KEY }} ${{ secrets.QINIU_SECRET_KEY }} qiniu-deploy
+  #     - name: Install qshell
+  #       run: |
+  #         wget -O qshell.tar.gz https://devtools.qiniu.com/qshell-linux-amd64-v2.14.0.tar.gz
+  #         tar -xzf qshell.tar.gz
+  #         sudo mv qshell-linux-amd64-v2.14.0 /usr/local/bin/qshell
+  #         qshell version
 
-      - name: Upload to Qiniu
-        run: |
-          # 上传静态资源（带 hash 的文件，长期缓存）
-          qshell qupload2 \
-            --src-dir=./dist \
-            --bucket=${{ secrets.QINIU_BUCKET }} \
-            --key-prefix=/ \
-            --overwrite=true \
-            --check-hash=true \
-            --thread-count=4 \
-            --skip-path-prefixes="index.html" \
-            --include-file-extensions="js,css,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot"
+  #     - name: Configure qshell
+  #       run: |
+  #         qshell account \
+  #           ${{ secrets.QINIU_ACCESS_KEY }} \
+  #           ${{ secrets.QINIU_SECRET_KEY }} \
+  #           qiniu-deploy
 
-          # 上传 index.html（不缓存，确保更新及时）
-          qshell rput ${{ secrets.QINIU_BUCKET }} \
-            index.html \
-            ./dist/index.html \
-            --overwrite
+  #     - name: Upload to Qiniu
+  #       run: |
+  #         # 上传静态资源
+  #         qshell qupload2 \
+  #           --src-dir=./dist \
+  #           --bucket=${{ secrets.QINIU_BUCKET }} \
+  #           --key-prefix=/ \
+  #           --overwrite=true \
+  #           --check-hash=true \
+  #           --thread-count=4 \
+  #           --skip-path-prefixes="index.html" \
+  #           --include-file-extensions="js,css,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot"
 
-      - name: Refresh CDN cache
-        run: |
-          qshell cdnrefresh \
-            --dirs=${{ secrets.QINIU_DOMAIN }}/
 
-      - name: Deploy summary
-        run: |
-          echo "## 🚀 Qiniu Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Bucket**: ${{ secrets.QINIU_BUCKET }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Domain**: ${{ secrets.QINIU_DOMAIN }}" >> $GITHUB_STEP_SUMMARY
+
+  #         # index.html 不缓存
+  #         qshell rput \
+  #           ${{ secrets.QINIU_BUCKET }} \
+  #           index.html \
+  #           ./dist/index.html \
+  #           --overwrite
+
+  #     - name: Refresh CDN cache
+  #       run: |
+  #         qshell cdnrefresh \
+  #           --dirs=${{ secrets.QINIU_DOMAIN }}/
+
+  #     - name: Deploy summary
+  #       run: |
+  #         echo "## 🚀 Qiniu Deployment" >> $GITHUB_STEP_SUMMARY
+  #         echo "" >> $GITHUB_STEP_SUMMARY
+  #         echo "- **Bucket**: ${{ secrets.QINIU_BUCKET }}" >> $GITHUB_STEP_SUMMARY
+  #         echo "- **Domain**: ${{ secrets.QINIU_DOMAIN }}" >> $GITHUB_STEP_SUMMARY
